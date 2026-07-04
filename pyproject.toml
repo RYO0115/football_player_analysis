@@ -1,0 +1,40 @@
+[project]
+name = "football-player-analysis"
+version = "0.1.0"
+description = "世界中のフットボール選手スタッツの収集・解析・Substack 投稿パイプライン"
+readme = "README.md"
+authors = [
+    { name = "RYO0115", email = "ryoudon.0115@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.0",
+    "pandas>=3.0.3",
+    "pyarrow>=24.0.0",
+    "python-dotenv>=1.2.2",
+    "python-substack>=0.1.24",
+    "soccerdata>=1.9.0",
+]
+
+[project.scripts]
+fpa = "football_player_analysis.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.9.8,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "bump-my-version>=1.4.1",
+    "pytest>=8.4.1",
+]
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'

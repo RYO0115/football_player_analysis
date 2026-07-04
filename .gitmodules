@@ -1,0 +1,3 @@
+[submodule ".claude/skills/python-dev-workflow"]
+	path = .claude/skills/python-dev-workflow
+	url = https://github.com/RYO0115/python-dev-workflow.git
