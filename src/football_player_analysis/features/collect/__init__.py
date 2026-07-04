@@ -3,12 +3,14 @@
 from football_player_analysis.features.collect.base import (
     META_COLUMNS,
     PlayerSeasonCollector,
+    is_attr_column,
 )
 from football_player_analysis.features.collect.fbref import FBrefCollector
 from football_player_analysis.features.collect.merge import (
     merge_sources,
     normalize_player_name,
 )
+from football_player_analysis.features.collect.transfermarkt import TransfermarktCollector
 from football_player_analysis.features.collect.understat import UnderstatCollector
 
 # データソース名 → コレクター実装のレジストリ。
@@ -16,13 +18,16 @@ from football_player_analysis.features.collect.understat import UnderstatCollect
 SOURCES = {
     "fbref": FBrefCollector,
     "understat": UnderstatCollector,
+    "transfermarkt": TransfermarktCollector,
 }
 
 __all__ = [
     "META_COLUMNS",
     "PlayerSeasonCollector",
+    "is_attr_column",
     "FBrefCollector",
     "UnderstatCollector",
+    "TransfermarktCollector",
     "SOURCES",
     "merge_sources",
     "normalize_player_name",

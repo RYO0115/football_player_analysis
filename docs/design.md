@@ -16,7 +16,7 @@ src/football_player_analysis/
 │   ├── storage.py        # ParquetStorage (中間データの永続化)
 │   └── exceptions.py     # FpaError 階層
 ├── features/
-│   ├── collect/          # 収集: FBrefCollector / UnderstatCollector / merge_sources
+│   ├── collect/          # 収集: FBref/Understat/Transfermarkt Collector / merge_sources
 │   ├── analyze/          # 解析: per90 / percentiles / radar
 │   ├── predict/          # 予測: PotentialConfig / score_potential
 │   ├── report/           # 記事化: Article / build_potential_article
@@ -69,6 +69,15 @@ pipeline → (全 feature)、cli → pipeline
    混ざるため、`Pipeline.collector` は Optional とし、CLI は `SOURCES.get(source)`
    で実コレクターのあるソースのときだけ生成する (collect/run は実ソースのみ許可)。
    選手名の表記揺れ (アクセント有無) は `normalize_player_name` (unidecode) で吸収。
+7. **`__attr_` 静的属性列の規約**: 市場価値・身長のように「累積スタッツではなく
+   選手固有の静的属性」を表す列は `種別__attr_指標` の形にする (`base.is_attr_column`)。
+   per-90 換算 (`to_per90`) はこの印を持つ列を対象外にして値をそのまま残す (市場価値を
+   出場時間で割っても無意味なため)。merge は `__` を含む通常のスタッツ列として自然に
+   取り込むので、規約はこの列名だけで閉じ、merge/predict 側の変更を要さない。
+   Transfermarkt は soccerdata 非対応のため requests + BeautifulSoup で直接スクレイプ
+   するが、FBref と同じく「ネットワーク関数 (url -> html) を注入可能」にしてテストは
+   偽 HTML で行う。対応リーグ (soccerdata ID → TM の slug/競技 ID) は
+   `config/transfermarkt_leagues.toml` で管理し、コードに埋め込まない。
 
 ## スーパースター予測ロードマップ
 
@@ -78,8 +87,9 @@ pipeline → (全 feature)、cli → pipeline
   是正 (`applied_profile` 列で適用プロファイルを確認可能)。
 - v1: **Understat コレクター追加で xG/npxG/xA を補完**
   (2025-01 の Opta 契約解消で FBref から高度スタッツが消失したため優先度高)
-- v2: 複数シーズン収集 → 「翌シーズンの市場価値上昇 / Big5 上位クラブ移籍」を
-  ラベル化 (Transfermarkt 収集モジュール追加) → 勾配ブースティング等で学習
+- v2: **Transfermarkt コレクター追加で市場価値・身長を収集** (`--source transfermarkt`)。
+  まず選手個票への表示に使い、次段で複数シーズン収集 → 「翌シーズンの市場価値上昇 /
+  Big5 上位クラブ移籍」をラベル化 → 勾配ブースティング等で学習へ発展させる
 - v3: StatsBomb イベントデータで特徴量拡充、リーグ強度補正
 
 ## テスト方針

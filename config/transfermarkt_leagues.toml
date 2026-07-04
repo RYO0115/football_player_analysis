@@ -1,0 +1,29 @@
+# soccerdata 形式のリーグ ID → Transfermarkt の URL 情報の対応表。
+#
+# 対応リーグはユーザーが自由に増やせるようコードには埋め込まず、この TOML で管理する。
+# 追加方法: 対象リーグの Transfermarkt トップページ URL
+#   https://www.transfermarkt.com/{slug}/startseite/wettbewerb/{competition_id}
+# から slug と competition_id を控えて 1 ブロック足すだけ。
+#
+#   slug           … URL のスラッグ (表示用。competition_id が主キー)
+#   competition_id … Transfermarkt の競技 ID (例: Premier League = GB1)
+
+["ENG-Premier League"]
+slug = "premier-league"
+competition_id = "GB1"
+
+["ESP-La Liga"]
+slug = "laliga"
+competition_id = "ES1"
+
+["ITA-Serie A"]
+slug = "serie-a"
+competition_id = "IT1"
+
+["GER-Bundesliga"]
+slug = "bundesliga"
+competition_id = "L1"
+
+["FRA-Ligue 1"]
+slug = "ligue-1"
+competition_id = "FR1"

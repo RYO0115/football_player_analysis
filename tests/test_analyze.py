@@ -39,6 +39,17 @@ def test_to_per90_requires_minutes_column(normalized_stats):
         to_per90(normalized_stats.drop(columns=["minutes"]))
 
 
+def test_to_per90_skips_attr_columns(normalized_stats):
+    # 市場価値等の `__attr_` 静的属性列は per-90 換算せず値をそのまま残すこと
+    df = normalized_stats.assign(
+        **{"transfermarkt__attr_market_value_eur": [6.0e7, 3.0e7, 1.0e7, 2.0e7]}
+    )
+    result = to_per90(df)
+    assert "transfermarkt__attr_market_value_eur_per90" not in result.columns
+    young = result[result["player"] == "Young Star"].iloc[0]
+    assert young["transfermarkt__attr_market_value_eur"] == pytest.approx(6.0e7)
+
+
 def test_position_group_takes_primary_position():
     assert position_group("MF,FW") == "MF"  # FBref 形式
     assert position_group("D M S") == "D"  # Understat 形式 (空白区切り)

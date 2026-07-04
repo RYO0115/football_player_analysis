@@ -54,7 +54,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "merge", help="primary (--source) と secondary を選手名で結合して保存"
     )
     add_league_season(p_merge)
-    add_source(p_merge)
+    # primary に "merged" を許可すると、fbref+understat の結合結果へさらに
+    # transfermarkt を重ねられる (例: --source merged --secondary transfermarkt)。
+    add_source(p_merge, include_merged=True)
     p_merge.add_argument(
         "--secondary",
         choices=sorted(SOURCES),
