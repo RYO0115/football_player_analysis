@@ -1,12 +1,25 @@
 # スーパースター潜在能力スコアの設定。
 # metric_weights のキーは「パーセンタイル列名に含まれるキーワード」。
 # 一致した指標すべてに重みが掛かる。自由に追加・削除してよい。
+#
+# [profiles.<名前>.metric_weights] でポジショングループ別の重みを定義できる。
+# <名前> は選手の position_group (FBref: "DF"/"MF"/"FW" 等、Understat: "D"/"M"/"S"
+# 等の 1 文字表記) と緩い前方一致 (どちらかが他方で始まる) で照合する。
+# 複数一致する場合は最長キーを優先するため、同じ守備グループでも FBref 用の
+# "DF" と Understat 用の "D" を両方定義しておくと双方のソースに対応できる。
+# 該当プロファイルが無い、またはそのキーワードが 1 列も一致しない選手には
+# 既定の [metric_weights] が使われる (score_potential の applied_profile 列で
+# 実際に適用されたプロファイルを確認できる)。
+# プロファイル名の集合はコード側で列挙しないので、ここに追加するだけで
+# 新しいポジション区分に対応できる。
 
 full_bonus_age = 18.0   # この年齢以下は年齢ボーナス最大
 max_age = 24.0          # 候補に含める上限年齢
 ability_floor = 0.35    # 年齢によらない能力スコアの最低ウェイト
 min_minutes = 450.0     # 評価対象の最低出場時間 (5 試合分)
 
+# 既定プロファイル (どのポジションプロファイルにも該当しない選手に適用)。
+# 攻撃系 (FW 等) を想定した重み。
 [metric_weights]
 npxg = 3.0     # ノンペナルティ期待得点: 決定機関与の質
 xg = 2.0       # 期待得点/アシスト系
@@ -16,3 +29,43 @@ sca = 1.5      # シュート創出アクション
 prg = 2.0      # プログレッシブパス/キャリー (前進性)
 carries = 1.0  # ボール運搬
 tkl = 0.5      # 守備貢献
+
+# 中盤 (ボランチ・インサイドハーフ等) 向けプロファイル。
+# FBref の "MF" と Understat の "M" の両方に対応するため 2 つ定義する。
+[profiles.MF.metric_weights]
+xg_buildup = 2.5  # Understat: 得点に繋がる関与全般 (ビルドアップ貢献)
+xg_chain = 2.0    # Understat: 攻撃シーケンスへの関与度
+key_passes = 1.5  # 決定機会創出パス
+xa = 1.5          # 期待アシスト
+tklw = 2.0        # 成功タックル: 中盤での守備強度
+int = 2.0         # インターセプト: 攻守切り替えでの読みの良さ
+prg = 1.5         # プログレッシブパス/キャリー (前進性)
+npxg = 1.0        # 得点関与そのものも一定程度は評価
+
+[profiles.M.metric_weights]
+xg_buildup = 2.5
+xg_chain = 2.0
+key_passes = 1.5
+xa = 1.5
+tklw = 2.0
+int = 2.0
+prg = 1.5
+npxg = 1.0
+
+# ディフェンダー向けプロファイル。
+# FBref の "DF" と Understat の "D" の両方に対応するため 2 つ定義する。
+[profiles.DF.metric_weights]
+tklw = 2.5        # 成功タックル: 対人守備の核
+int = 2.5         # インターセプト: 危険察知・読みの良さ
+aerial = 1.5      # 空中戦 (FBref misc__Aerial 系)
+xg_buildup = 1.5  # 最終ラインからのビルドアップ貢献
+npxg = 1.0        # 稀にセットプレーで得点関与するケースも評価
+gls = 1.0         # 実ゴール (セットプレー等の得点力)
+
+[profiles.D.metric_weights]
+tklw = 2.5
+int = 2.5
+aerial = 1.5
+xg_buildup = 1.5
+npxg = 1.0
+gls = 1.0

@@ -72,7 +72,10 @@ pipeline → (全 feature)、cli → pipeline
 
 ## スーパースター予測ロードマップ
 
-- v0 (済): 重み付きパーセンタイル × 年齢カーブ (`config/potential.toml`)
+- v0 (済): 重み付きパーセンタイル × 年齢カーブ (`config/potential.toml`)。
+  ポジショングループ別の重みプロファイル (`[profiles.<名前>.metric_weights]`)
+  に対応し、ボランチ型・DF型の若手が攻撃寄り既定重みで過小評価される問題を
+  是正 (`applied_profile` 列で適用プロファイルを確認可能)。
 - v1: **Understat コレクター追加で xG/npxG/xA を補完**
   (2025-01 の Opta 契約解消で FBref から高度スタッツが消失したため優先度高)
 - v2: 複数シーズン収集 → 「翌シーズンの市場価値上昇 / Big5 上位クラブ移籍」を
