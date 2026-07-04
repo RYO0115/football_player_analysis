@@ -1,6 +1,6 @@
 [project]
 name = "football-player-analysis"
-version = "0.1.0"
+version = "0.2.0"
 description = "世界中のフットボール選手スタッツの収集・解析・Substack 投稿パイプライン"
 readme = "README.md"
 authors = [
@@ -31,7 +31,7 @@ dev = [
 ]
 
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.2.0"
 commit = true
 tag = true
 
