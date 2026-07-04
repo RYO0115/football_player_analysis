@@ -16,7 +16,7 @@ src/football_player_analysis/
 │   ├── storage.py        # ParquetStorage (中間データの永続化)
 │   └── exceptions.py     # FpaError 階層
 ├── features/
-│   ├── collect/          # 収集: FBrefCollector (soccerdata)
+│   ├── collect/          # 収集: FBrefCollector / UnderstatCollector / merge_sources
 │   ├── analyze/          # 解析: per90 / percentiles / radar
 │   ├── predict/          # 予測: PotentialConfig / score_potential
 │   ├── report/           # 記事化: Article / build_potential_article
@@ -35,13 +35,16 @@ pipeline → (全 feature)、cli → pipeline
 
 - analyze は collect の正規化スキーマ (`META_COLUMNS`) に依存する。
 - publish は report の `Article` にのみ依存し、解析結果の中身を知らない。
+- merge (collect 内の純粋関数 `merge_sources`) は 2 つの正規化 DataFrame を
+  選手名で結合するだけで、コレクター実装には依存しない。
 
 ## モジュール間契約
 
 | フェーズ | 入力 | 出力 |
 |---|---|---|
 | collect | league, season | META_COLUMNS + `種別__指標` 数値列の DataFrame |
-| analyze | collect 出力 | + `*_per90` / `*_pct` / `position_group` 列 |
+| merge | primary/secondary の collect 出力 2 枚 | primary 基準に secondary のスタッツ列を左結合した DataFrame (`source="merged"`) |
+| analyze | collect / merge 出力 | + `*_per90` / `*_pct` / `position_group` 列 |
 | predict | analyze 出力 | + `potential_score` 列 (降順ソート済み) |
 | report | predict 出力 | `Article` (title / subtitle / body_markdown) |
 | publish | `Article` | 保存パス or Substack draft id |
@@ -59,13 +62,22 @@ pipeline → (全 feature)、cli → pipeline
    二段階で明示しない限り起きない。実投稿でもまず「下書き」作成を既定とする。
 5. **予測は契約固定で差し替え可能**: v0 はルールベース。将来 ML 化する際も
    「percentile 付き DataFrame in → potential_score 付き DataFrame out」を維持する。
+6. **"merged" は仮想ソース**: 複数ソース結合結果はコレクターを持たない仮想
+   ソース名 `merged` の raw データとして保存する。source を保存先の接尾辞に
+   使う既存の仕組み (`raw_player_season_{source}`) にそのまま乗るため、analyze/
+   predict は無変更で `--source merged` を扱える。コレクターを持たないソースが
+   混ざるため、`Pipeline.collector` は Optional とし、CLI は `SOURCES.get(source)`
+   で実コレクターのあるソースのときだけ生成する (collect/run は実ソースのみ許可)。
+   選手名の表記揺れ (アクセント有無) は `normalize_player_name` (unidecode) で吸収。
 
 ## スーパースター予測ロードマップ
 
 - v0 (済): 重み付きパーセンタイル × 年齢カーブ (`config/potential.toml`)
-- v1: 複数シーズン収集 → 「翌シーズンの市場価値上昇 / Big5 上位クラブ移籍」を
+- v1: **Understat コレクター追加で xG/npxG/xA を補完**
+  (2025-01 の Opta 契約解消で FBref から高度スタッツが消失したため優先度高)
+- v2: 複数シーズン収集 → 「翌シーズンの市場価値上昇 / Big5 上位クラブ移籍」を
   ラベル化 (Transfermarkt 収集モジュール追加) → 勾配ブースティング等で学習
-- v2: Understat / StatsBomb イベントデータで特徴量拡充、リーグ強度補正
+- v3: StatsBomb イベントデータで特徴量拡充、リーグ強度補正
 
 ## テスト方針
 

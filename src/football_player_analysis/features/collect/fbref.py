@@ -22,8 +22,11 @@ logger = logging.getLogger(__name__)
 from football_player_analysis.core.exceptions import CollectionError
 from football_player_analysis.features.collect.base import validate_normalized
 
-# 取得する FBref の統計種別。FBref の API 仕様に対応する技術的に閉じた値。
-DEFAULT_STAT_TYPES = ["standard", "shooting", "passing", "defense", "possession"]
+# 取得する FBref の統計種別。soccerdata 1.9 が提供する全種別 (技術的に閉じた値)。
+# 注: 2025-01 の Opta (StatsPerform) との契約解消により、FBref からは
+# xG・プログレッシブ・passing/defense/possession 等の高度スタッツが消失した。
+# xG 系は Understat コレクター (別ソース) で補完する方針。
+DEFAULT_STAT_TYPES = ["standard", "shooting", "keeper", "playing_time", "misc"]
 
 # soccerdata が返すメタ列 → 正規化スキーマの対応
 _META_MAP = {"player": "player", "team": "team", "pos": "position", "age": "age"}

@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pandas as pd
 
 from football_player_analysis.core.exceptions import AnalysisError
@@ -11,12 +13,14 @@ from football_player_analysis.features.collect.base import META_COLUMNS
 
 
 def position_group(position: object) -> str:
-    """FBref の複合ポジション表記 (例 'MF,FW') から主ポジションを取り出す。
+    """複合ポジション表記から主ポジションを取り出す。
 
-    グループの種類はデータに現れた値をそのまま使い、コード側で
-    ポジション一覧を網羅しない (新表記が来ても動くようにする)。
+    区切りはソースにより異なる (FBref: 'MF,FW' / Understat: 'D M S') ため、
+    カンマ・空白の両方で分割し先頭を採用する。グループの種類は
+    データに現れた値をそのまま使い、コード側でポジション一覧を網羅しない。
     """
-    return str(position).split(",")[0].strip() or "UNKNOWN"
+    tokens = re.split(r"[,\s]+", str(position).strip())
+    return (tokens[0] if tokens else "") or "UNKNOWN"
 
 
 def add_percentiles(df: pd.DataFrame, columns: list[str] | None = None) -> pd.DataFrame:

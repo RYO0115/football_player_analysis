@@ -26,14 +26,24 @@ def test_to_per90_filters_low_minutes(normalized_stats):
     assert "Mid Talent" not in set(result["player"])
 
 
+def test_to_per90_skips_already_per90_columns(normalized_stats):
+    # FBref の 'Per 90 Minutes' グループはすでに per-90 なので二重換算しないこと
+    df = normalized_stats.assign(**{"standard__Per 90 Minutes_Gls": [0.6, 0.3, 0.4, 0.5]})
+    result = to_per90(df)
+    assert "standard__Per 90 Minutes_Gls_per90" not in result.columns
+    assert result["standard__Per 90 Minutes_Gls"].tolist()[:2] == [0.6, 0.3]
+
+
 def test_to_per90_requires_minutes_column(normalized_stats):
     with pytest.raises(AnalysisError):
         to_per90(normalized_stats.drop(columns=["minutes"]))
 
 
 def test_position_group_takes_primary_position():
-    assert position_group("MF,FW") == "MF"
-    assert position_group(None) == "None"  # 未知表記でも落ちない
+    assert position_group("MF,FW") == "MF"  # FBref 形式
+    assert position_group("D M S") == "D"  # Understat 形式 (空白区切り)
+    assert position_group("None") == "None"  # 未知表記でも落ちない
+    assert position_group("") == "UNKNOWN"
 
 
 def test_add_percentiles_ranks_within_position_group(normalized_stats):

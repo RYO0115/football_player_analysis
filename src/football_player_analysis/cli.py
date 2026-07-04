@@ -14,9 +14,9 @@ from pathlib import Path
 
 from football_player_analysis.core.config import Settings
 from football_player_analysis.core.exceptions import FpaError
-from football_player_analysis.features.collect import FBrefCollector
+from football_player_analysis.features.collect import SOURCES
 from football_player_analysis.features.predict import PotentialConfig
-from football_player_analysis.pipeline import Pipeline
+from football_player_analysis.pipeline import MERGED_SOURCE, Pipeline
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -35,19 +35,46 @@ def _build_parser() -> argparse.ArgumentParser:
         )
         p.add_argument("--season", required=True, help="シーズン (例: 2425)")
 
-    p_collect = sub.add_parser("collect", help="FBref から選手スタッツを収集して保存")
+    def add_source(p: argparse.ArgumentParser, include_merged: bool = False) -> None:
+        # collect/run は実コレクターが要るため実ソースのみ。analyze/predict は
+        # merge で生成した仮想ソース "merged" も対象にできる。
+        choices = sorted(SOURCES) + ([MERGED_SOURCE] if include_merged else [])
+        p.add_argument(
+            "--source",
+            choices=choices,
+            default="fbref",
+            help="データソース (fbref: 基本スタッツ / understat: xG 系 / merged: 結合済み)",
+        )
+
+    p_collect = sub.add_parser("collect", help="外部ソースから選手スタッツを収集して保存")
     add_league_season(p_collect)
+    add_source(p_collect)
+
+    p_merge = sub.add_parser(
+        "merge", help="primary (--source) と secondary を選手名で結合して保存"
+    )
+    add_league_season(p_merge)
+    add_source(p_merge)
+    p_merge.add_argument(
+        "--secondary",
+        choices=sorted(SOURCES),
+        default="understat",
+        help="結合する副ソース (既定: understat)",
+    )
 
     p_analyze = sub.add_parser("analyze", help="per-90 換算とパーセンタイルを付与")
     add_league_season(p_analyze)
+    add_source(p_analyze, include_merged=True)
     p_analyze.add_argument("--min-minutes", type=float, default=450.0)
 
     p_predict = sub.add_parser("predict", help="潜在能力スコアの上位を表示")
+    add_source(p_predict, include_merged=True)
     p_predict.add_argument("--config", type=Path, default=Path("config/potential.toml"))
     p_predict.add_argument("--top", type=int, default=20)
 
     p_run = sub.add_parser("run", help="収集→解析→予測→記事生成→投稿を一括実行")
     add_league_season(p_run)
+    add_source(p_run)
     p_run.add_argument("--config", type=Path, default=Path("config/potential.toml"))
     p_run.add_argument("--top", type=int, default=20)
     p_run.add_argument(
@@ -61,13 +88,27 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     settings = Settings.from_env()
-    pipeline = Pipeline(settings=settings, collector=FBrefCollector())
+    source = getattr(args, "source", "fbref")
+    # "merged" 等コレクターを持たないソースでも analyze/predict は動く必要が
+    # あるため、コレクターは存在するソースのときだけ生成する。
+    collector_cls = SOURCES.get(source)
+    pipeline = Pipeline(
+        settings=settings,
+        collector=collector_cls() if collector_cls else None,
+        source=source,
+    )
 
     try:
         if args.command == "collect":
             for league in args.league:
                 path = pipeline.collect(league, args.season)
                 print(f"収集完了: {path}")
+        elif args.command == "merge":
+            for league in args.league:
+                path = pipeline.merge(
+                    league, args.season, secondary_source=args.secondary
+                )
+                print(f"結合完了: {path}")
         elif args.command == "analyze":
             for league in args.league:
                 path = pipeline.analyze(league, args.season, min_minutes=args.min_minutes)

@@ -11,7 +11,7 @@ from football_player_analysis.features.collect.base import META_COLUMNS
 
 # 割合・パーセント系 (列名に含まれると per-90 換算が無意味になる) の指標を除外する目印。
 # FBref の列名規約 (%・90 表記) に対する技術的判定であり、指標の内容を限定するものではない。
-_RATE_MARKERS = ("%", "/90", "_90", "per90")
+_RATE_MARKERS = ("%", "/90", "_90", "per90", "per 90")
 
 
 def is_rate_column(column: str) -> bool:
