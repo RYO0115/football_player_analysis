@@ -1,0 +1,28 @@
+# 次元スコア (smarterscout 流の 0-100 レーティング) の定義。
+# 次元名がそのまま列名 (dim_<次元名>) と記事の表示名になる。
+# metric_weights のキーは指標名の部分一致キーワード (radar.toml と同じ規則)。
+# 自由に次元を追加・削除してよい。
+
+[dimensions."攻撃".metric_weights]
+np_xg = 3.0     # ノンペナルティ期待得点
+gls = 2.0       # ゴール
+sot = 1.5       # 枠内シュート
+shots = 1.0     # シュート数
+
+[dimensions."創造".metric_weights]
+xa = 3.0          # 期待アシスト
+key_passes = 2.0  # キーパス
+ast = 2.0         # アシスト
+sca = 1.5         # シュート創出アクション
+
+[dimensions."前進".metric_weights]
+xg_buildup = 3.0  # ビルドアップ関与 (シュート/アシスト除く)
+xg_chain = 2.0    # 攻撃シーケンス関与
+prg = 2.0         # プログレッシブ (データがあれば)
+carries = 1.0     # ボール運搬
+
+[dimensions."守備".metric_weights]
+tklw = 3.0    # タックル勝利
+int = 3.0     # インターセプト
+aerial = 1.5  # 空中戦 (データがあれば)
+recov = 1.5   # リカバリー (データがあれば)

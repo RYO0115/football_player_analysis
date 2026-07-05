@@ -1,0 +1,109 @@
+# レーダーチャートの軸選択設定。
+# カテゴリごとに keywords (指標名の部分一致) と axes (採用する軸数) を定義する。
+# カテゴリの記述順がレーダー上の並び順になる。攻撃偏重を避けるため、
+# 攻撃/創造/前進/守備で軸数を均等に割り当てている。自由に増減してよい。
+#
+# さらに StatsBomb 流に [templates.<ポジション接頭辞>] でポジション別の
+# 軸配分を定義できる (position_group と前方一致・最長キー優先で解決)。
+# 該当が無いポジションは下の既定 [categories.*] を使う。
+
+[categories.attack]      # 得点関与
+# gls (FBref) と goals (Understat) は同義のため、間に sot/shots を挟んで
+# 得点系だけで攻撃枠が埋まらないようにしている
+keywords = ["np_xg", "gls", "sot", "shots", "goals"]
+axes = 3
+
+[categories.creation]    # 創造性 (チャンスメイク)
+keywords = ["xa", "key_passes", "ast", "assists", "sca"]
+axes = 3
+
+[categories.progression] # 前進・ビルドアップ関与
+keywords = ["xg_buildup", "xg_chain", "prg", "carries"]
+axes = 3
+
+[categories.defense]     # 守備貢献
+keywords = ["tklw", "tkl", "int", "aerial", "recov", "blocks", "clr"]
+axes = 3
+
+# --- ポジション別テンプレート (StatsBomb 流) ---------------------------------
+# DF/D: 守備・ビルドアップを厚く、攻撃・創造は「攻撃的 CB」を見分けるスタイル指標として残す
+[templates.DF.categories.defense]
+keywords = ["tklw", "tkl", "int", "aerial", "recov", "blocks", "clr", "fls"]
+axes = 4
+[templates.DF.categories.progression]
+keywords = ["xg_buildup", "xg_chain", "prg", "carries"]
+axes = 3
+[templates.DF.categories.attack]
+keywords = ["np_xg", "gls", "sot"]
+axes = 2
+[templates.DF.categories.creation]
+keywords = ["xa", "key_passes", "ast"]
+axes = 2
+
+# Understat 由来の "D" 単独表記にも同じ配分を適用
+[templates.D.categories.defense]
+keywords = ["tklw", "tkl", "int", "aerial", "recov", "blocks", "clr", "fls"]
+axes = 4
+[templates.D.categories.progression]
+keywords = ["xg_buildup", "xg_chain", "prg", "carries"]
+axes = 3
+[templates.D.categories.attack]
+keywords = ["np_xg", "gls", "sot"]
+axes = 2
+[templates.D.categories.creation]
+keywords = ["xa", "key_passes", "ast"]
+axes = 2
+
+# MF/M: 前進・創造を厚く、攻撃と守備を同じ幅で
+[templates.MF.categories.progression]
+keywords = ["xg_buildup", "xg_chain", "prg", "carries"]
+axes = 3
+[templates.MF.categories.creation]
+keywords = ["xa", "key_passes", "ast", "sca"]
+axes = 3
+[templates.MF.categories.attack]
+keywords = ["np_xg", "gls", "sot", "shots"]
+axes = 3
+[templates.MF.categories.defense]
+keywords = ["tklw", "tkl", "int", "aerial", "recov"]
+axes = 3
+
+[templates.M.categories.progression]
+keywords = ["xg_buildup", "xg_chain", "prg", "carries"]
+axes = 3
+[templates.M.categories.creation]
+keywords = ["xa", "key_passes", "ast", "sca"]
+axes = 3
+[templates.M.categories.attack]
+keywords = ["np_xg", "gls", "sot", "shots"]
+axes = 3
+[templates.M.categories.defense]
+keywords = ["tklw", "tkl", "int", "aerial", "recov"]
+axes = 3
+
+# FW/F: 得点関与・創造を厚く、守備はスタイル指標として最小限
+[templates.FW.categories.attack]
+keywords = ["np_xg", "gls", "sot", "shots", "goals"]
+axes = 4
+[templates.FW.categories.creation]
+keywords = ["xa", "key_passes", "ast", "sca"]
+axes = 3
+[templates.FW.categories.progression]
+keywords = ["xg_chain", "xg_buildup", "prg", "carries"]
+axes = 2
+[templates.FW.categories.defense]
+keywords = ["tklw", "tkl", "int"]
+axes = 1
+
+[templates.F.categories.attack]
+keywords = ["np_xg", "gls", "sot", "shots", "goals"]
+axes = 4
+[templates.F.categories.creation]
+keywords = ["xa", "key_passes", "ast", "sca"]
+axes = 3
+[templates.F.categories.progression]
+keywords = ["xg_chain", "xg_buildup", "prg", "carries"]
+axes = 2
+[templates.F.categories.defense]
+keywords = ["tklw", "tkl", "int"]
+axes = 1

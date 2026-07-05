@@ -17,7 +17,7 @@ src/football_player_analysis/
 │   └── exceptions.py     # FpaError 階層
 ├── features/
 │   ├── collect/          # 収集: FBref/Understat/Transfermarkt Collector / merge_sources
-│   ├── analyze/          # 解析: per90 / percentiles / radar
+│   ├── analyze/          # 解析: per90 / percentiles / radar / radar_axes (軸選択)
 │   ├── predict/          # 予測: PotentialConfig / score_potential
 │   ├── report/           # 記事化: Article / build_potential_article
 │   └── publish/          # 投稿: SubstackPublisher
@@ -42,9 +42,9 @@ pipeline → (全 feature)、cli → pipeline
 
 | フェーズ | 入力 | 出力 |
 |---|---|---|
-| collect | league, season | META_COLUMNS + `種別__指標` 数値列の DataFrame |
+| collect | league, season | META_COLUMNS + `種別__指標` 数値列の DataFrame (fbref は別途 `team_possession` も保存) |
 | merge | primary/secondary の collect 出力 2 枚 | primary 基準に secondary のスタッツ列を左結合した DataFrame (`source="merged"`) |
-| analyze | collect / merge 出力 | + `*_per90` / `*_pct` / `position_group` 列 |
+| analyze | collect / merge 出力 | + `*_padj` (ポゼッション調整、possession があれば) / `*_per90` / `*_pct` / `position_group` / `dim_*` (次元スコア 0-100) 列 |
 | predict | analyze 出力 | + `potential_score` 列 (降順ソート済み) |
 | report | predict 出力 | `Article` (title / subtitle / body_markdown) |
 | publish | `Article` | 保存パス or Substack draft id |
@@ -69,7 +69,14 @@ pipeline → (全 feature)、cli → pipeline
    混ざるため、`Pipeline.collector` は Optional とし、CLI は `SOURCES.get(source)`
    で実コレクターのあるソースのときだけ生成する (collect/run は実ソースのみ許可)。
    選手名の表記揺れ (アクセント有無) は `normalize_player_name` (unidecode) で吸収。
-7. **`__attr_` 静的属性列の規約**: 市場価値・身長のように「累積スタッツではなく
+7. **アナリスト手法の採用 (詳細は docs/analyst_methods.md)**: レーダー軸は
+   `config/radar.toml` の**ポジション別テンプレート** (StatsBomb 流、position_group と
+   `core.matching.match_longest_prefix` で解決)。選手の総合像は `config/dimensions.toml`
+   による**次元スコア dim_\* (0-100、同ポジション内)** (smarterscout 流)。守備カウントは
+   `team_possession` データがあるとき **PAdj (× 50/相手ポゼッション%)** に置き換えられ、
+   列名は `*_padj` になる (キーワード照合の二重一致を防ぐため生列は残さない)。
+   母集団は既定でリーグ内、`fpa analyze --pool all` で全リーグ統合 (FBref の競技グループ相当)。
+8. **`__attr_` 静的属性列の規約**: 市場価値・身長のように「累積スタッツではなく
    選手固有の静的属性」を表す列は `種別__attr_指標` の形にする (`base.is_attr_column`)。
    per-90 換算 (`to_per90`) はこの印を持つ列を対象外にして値をそのまま残す (市場価値を
    出場時間で割っても無意味なため)。merge は `__` を含む通常のスタッツ列として自然に
@@ -90,7 +97,9 @@ pipeline → (全 feature)、cli → pipeline
 - v2: **Transfermarkt コレクター追加で市場価値・身長を収集** (`--source transfermarkt`)。
   まず選手個票への表示に使い、次段で複数シーズン収集 → 「翌シーズンの市場価値上昇 /
   Big5 上位クラブ移籍」をラベル化 → 勾配ブースティング等で学習へ発展させる
-- v3: StatsBomb イベントデータで特徴量拡充、リーグ強度補正
+- v3: StatsBomb イベントデータで特徴量拡充、リーグ強度補正 (smarterscout のベンチマーク換算相当)
+- v4: PCA + k-means による**ロールクラスタリング** (「Box-to-Box」「Advanced Creator」等の
+  データ駆動ロールを母集団にする。scikit-learn 依存追加込み)
 
 ## テスト方針
 

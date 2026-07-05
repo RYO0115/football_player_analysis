@@ -11,6 +11,11 @@ import pandas as pd
 from football_player_analysis.core.config import Settings
 from football_player_analysis.core.storage import ParquetStorage
 from football_player_analysis.features.analyze import add_percentiles, to_per90
+from football_player_analysis.features.analyze.dimensions import (
+    DimensionConfig,
+    add_dimension_scores,
+)
+from football_player_analysis.features.analyze.padj import apply_padj
 from football_player_analysis.features.collect import (
     PlayerSeasonCollector,
     merge_sources,
@@ -26,6 +31,12 @@ ANALYZED_DATASET = "analyzed_player_season"
 # 複数ソースを結合した仮想ソース名。対応するコレクターは存在せず、
 # merge フェーズが生成する raw データを analyze/predict がそのまま扱う。
 MERGED_SOURCE = "merged"
+
+# チームポゼッション (PAdj 用) の保存先。ソースは FBref 固定のため接尾辞なし。
+POSSESSION_DATASET = "team_possession"
+
+# 次元スコア定義の既定パス (CLI と同じくリポジトリルート相対)
+DEFAULT_DIMENSIONS_PATH = Path("config/dimensions.toml")
 
 
 @dataclass
@@ -80,13 +91,52 @@ class Pipeline:
             merged, f"{RAW_DATASET}_{MERGED_SOURCE}", league, season
         )
 
-    def analyze(self, league: str, season: str, min_minutes: float = 450.0) -> Path:
-        """per-90 換算 + ポジション内パーセンタイルを付与して保存する。"""
-        raw = self.storage.load(self.raw_dataset, league, season)
+    def collect_possession(self, league: str, season: str) -> Path:
+        """チームポゼッション% を収集して保存する (PAdj 用、FBref 固定)。"""
+        from football_player_analysis.features.collect.fbref import (
+            collect_team_possession,
+        )
+
+        df = collect_team_possession(league, season)
+        return self.storage.save(df, POSSESSION_DATASET, league, season)
+
+    def analyze(
+        self,
+        league: str,
+        season: str,
+        min_minutes: float = 450.0,
+        pool: str = "league",
+        dimensions_config: DimensionConfig | None = None,
+    ) -> Path:
+        """per-90 換算 + ポジション内パーセンタイル + 次元スコアを付与して保存する。
+
+        pool="all" にすると同ソースの収集済み全リーグを母集団にして
+        パーセンタイル・次元スコアを計算する (FBref の競技グループ相当)。
+        保存は従来どおりリーグ単位。
+        """
+        if pool == "all":
+            raw = self.storage.load_all(self.raw_dataset)
+        else:
+            raw = self.storage.load(self.raw_dataset, league, season)
+
+        # PAdj: チームポゼッションが収集済みのときだけ適用する (defensive)
+        try:
+            possession = self.storage.load_all(POSSESSION_DATASET)
+        except FileNotFoundError:
+            possession = None
+        if possession is not None:
+            raw = apply_padj(raw, possession)
+
         per90 = to_per90(raw, min_minutes=min_minutes)
         # 比較は per-90 換算した値で行う (累積値のパーセンタイルは出場時間の影響が大きい)
         pct_targets = [c for c in per90.columns if c.endswith("_per90")]
         analyzed = add_percentiles(per90, columns=pct_targets)
+        analyzed = add_dimension_scores(
+            analyzed,
+            dimensions_config or DimensionConfig.load(DEFAULT_DIMENSIONS_PATH),
+        )
+        if pool == "all":
+            analyzed = analyzed[analyzed["league"] == league].reset_index(drop=True)
         return self.storage.save(analyzed, self.analyzed_dataset, league, season)
 
     def predict(self, potential_config: PotentialConfig | None = None) -> pd.DataFrame:

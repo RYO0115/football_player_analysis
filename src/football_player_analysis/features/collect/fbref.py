@@ -51,6 +51,38 @@ def _parse_age(value: object) -> float | None:
     return float(m.group(1)) if m else None
 
 
+def collect_team_possession(league: str, season: str) -> pd.DataFrame:
+    """チームごとの平均ポゼッション% を取得する (PAdj 用)。
+
+    2025-01 の Opta 契約解消後も FBref のチーム標準スタッツには Poss 列が
+    残っているため、選手スタッツと別に 1 ページだけ取得する。
+    """
+    import soccerdata as sd
+
+    fbref = sd.FBref(leagues=league, seasons=season)
+    try:
+        raw = fbref.read_team_season_stats(stat_type="standard").reset_index()
+    except Exception as exc:
+        raise CollectionError(
+            f"FBref チームスタッツ取得失敗 league={league} season={season}: {exc}"
+        ) from exc
+    df = _flatten_columns(raw)
+    poss_col = next((c for c in df.columns if str(c).lower() == "poss"), None)
+    if poss_col is None:
+        raise CollectionError(
+            f"FBref チームスタッツに Poss 列がありません: league={league} season={season}"
+        )
+    out = pd.DataFrame(
+        {
+            "team": df["team"],
+            "league": league,
+            "season": season,
+            "possession": pd.to_numeric(df[poss_col], errors="coerce"),
+        }
+    )
+    return out.dropna(subset=["possession"]).reset_index(drop=True)
+
+
 def soccerdata_reader(league: str, season: str) -> ReadFn:
     """本番用 reader。soccerdata の import はネットワーク副作用を遅延させるため関数内で行う。"""
     import soccerdata as sd
@@ -141,7 +173,12 @@ class FBrefCollector:
 
         # メタ以外の数値列をすべて "種別__指標" として採用する。
         # 指標の増減は FBref 側の事情で起きるため、列挙せず動的に取り込む。
-        consumed = set(_META_MAP) | ({minutes_col} if minutes_col else set())
+        # born (生年)・season 等は数値に見えるがスタッツではないため明示的に除外する。
+        consumed = (
+            set(_META_MAP)
+            | ({minutes_col} if minutes_col else set())
+            | {"league", "season", "born", "nation"}
+        )
         for col in df.columns:
             if col in consumed:
                 continue

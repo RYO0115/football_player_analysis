@@ -68,6 +68,12 @@ def _build_parser() -> argparse.ArgumentParser:
     add_league_season(p_analyze)
     add_source(p_analyze, include_merged=True)
     p_analyze.add_argument("--min-minutes", type=float, default=450.0)
+    p_analyze.add_argument(
+        "--pool",
+        choices=["league", "all"],
+        default="league",
+        help="パーセンタイルの母集団 (league: リーグ内 / all: 収集済み全リーグ)",
+    )
 
     p_predict = sub.add_parser("predict", help="潜在能力スコアの上位を表示")
     add_source(p_predict, include_merged=True)
@@ -105,6 +111,14 @@ def main(argv: list[str] | None = None) -> int:
             for league in args.league:
                 path = pipeline.collect(league, args.season)
                 print(f"収集完了: {path}")
+                if source == "fbref":
+                    # PAdj 用のチームポゼッションも同時に取得しておく
+                    # (失敗しても選手データ収集は成立しているので警告に留める)
+                    try:
+                        poss_path = pipeline.collect_possession(league, args.season)
+                        print(f"ポゼッション収集完了: {poss_path}")
+                    except FpaError as exc:
+                        print(f"警告: ポゼッション収集に失敗 ({exc})", file=sys.stderr)
         elif args.command == "merge":
             for league in args.league:
                 path = pipeline.merge(
@@ -113,7 +127,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"結合完了: {path}")
         elif args.command == "analyze":
             for league in args.league:
-                path = pipeline.analyze(league, args.season, min_minutes=args.min_minutes)
+                path = pipeline.analyze(
+                    league, args.season, min_minutes=args.min_minutes, pool=args.pool
+                )
                 print(f"解析完了: {path}")
         elif args.command == "predict":
             ranked = pipeline.predict(PotentialConfig.load(args.config))

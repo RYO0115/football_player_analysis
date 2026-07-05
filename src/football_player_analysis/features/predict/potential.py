@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 from football_player_analysis.core.exceptions import AnalysisError
+from football_player_analysis.core.matching import match_longest_prefix
 from football_player_analysis.features.analyze.percentiles import (
     position_group as derive_position_group,
 )
@@ -114,21 +115,8 @@ def _col_weights(weights: dict[str, float], pct_cols: list[str]) -> dict[str, fl
 
 
 def _match_profile(group: str, profiles: dict[str, dict[str, float]]) -> str | None:
-    """position_group にマッチするプロファイルキーを探す。
-
-    ソースによってポジション表記の粒度が異なる (FBref: "DF" / Understat: "D")
-    ため、「グループ名がキーで始まる」または「キーがグループ名で始まる」の
-    緩い前方一致で判定する。複数一致する場合は最長キーを優先する
-    (例: グループ "DF" はキー "D" にも "DF" にも一致するが "DF" を採用)。
-    """
-    group_lower = group.lower()
-    best_key: str | None = None
-    for key in profiles:
-        key_lower = key.lower()
-        if group_lower.startswith(key_lower) or key_lower.startswith(group_lower):
-            if best_key is None or len(key) > len(best_key):
-                best_key = key
-    return best_key
+    """position_group にマッチするプロファイルキーを探す (照合規則は core.matching)。"""
+    return match_longest_prefix(group, profiles)
 
 
 def score_potential(

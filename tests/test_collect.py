@@ -35,6 +35,18 @@ def test_collect_parses_age_and_minutes(raw_fbref_frames):
     assert young["minutes"] == 1800
 
 
+def test_collect_excludes_born_and_season_columns(raw_fbref_frames):
+    # born (生年) や season は数値に見えるがスタッツではないため取り込まないこと
+    frames = dict(raw_fbref_frames)
+    standard = frames["standard"].copy()
+    standard[("born", "")] = [2006, 1995, 2000]
+    standard[("season", "")] = [2526, 2526, 2526]
+    frames["standard"] = standard
+    df = make_collector(frames).collect("TEST-League", "2425")
+    assert not any("born" in c for c in df.columns)
+    assert not any(c == "standard__season" for c in df.columns)
+
+
 def test_collect_merges_multiple_stat_types(raw_fbref_frames):
     df = make_collector(raw_fbref_frames).collect("TEST-League", "2425")
     assert any(c.startswith("standard__") for c in df.columns)

@@ -4,14 +4,11 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 import pandas as pd
 
-# *_pct 列名から指標名を取り出す際に取り除く技術的サフィックス。
-# 指標そのもの (xg / gls / TklW 等) は列挙せず、命名規則からの機械的な整形のみ行う。
-_METRIC_LABEL_SUFFIXES = ("_pct", "_per90")
+from football_player_analysis.features.analyze.radar_axes import metric_label
 
 
 @dataclass(frozen=True)
@@ -41,18 +38,12 @@ def potential_stars(score: float) -> str:
 
 
 def _metric_label(column: str) -> str:
-    """*_pct 列名から指標名を機械的に抽出する。
+    """*_pct 列名から表示用の指標名を抽出する。
 
-    指標一覧をコードに列挙しないため、命名規則 (`種別__カテゴリ_指標_per90_pct` 等) から
-    技術的サフィックスを取り除いた最後のアンダースコア区切りセグメントを指標名とみなす。
-    例: understat__xg_per90_pct → xg / misc__Performance_TklW_per90_pct → TklW
+    ラベル規則 (PAdj マーカーや np_xg の保持) を analyze 側と揃えるため、
+    radar_axes.metric_label に委譲する。
     """
-    stripped = column
-    for suffix in _METRIC_LABEL_SUFFIXES:
-        if stripped.endswith(suffix):
-            stripped = stripped[: -len(suffix)]
-    tokens = [t for t in re.split(r"_+", stripped) if t]
-    return tokens[-1] if tokens else stripped
+    return metric_label(column)
 
 
 # 「強み」として表示すると誤解を招く指標 (高いほど悪い規律系スタッツ) の目印。
@@ -95,14 +86,21 @@ def _format_market_value(value_eur: float) -> str:
     return f"{value_eur / 1_000_000:.2f} M€"
 
 
-def _build_card(rank: int, row: pd.Series) -> str:
-    """選手 1 名分の個票 (N5 風プロフィールカード) を Markdown で組み立てる。
+def card_heading(rank: int, row: pd.Series) -> str:
+    """個票の見出し行 (順位・選手名・所属) を返す。
+
+    レーダーと並べる際に見出しだけ独立配置できるよう本文と分離している。
+    """
+    return f"### {rank}. {row['player']} ({row['team']})"
+
+
+def card_body(row: pd.Series) -> str:
+    """個票の本文 (ポジション以下の箇条書き) を Markdown で組み立てる。
 
     列は存在するときだけ表示する (Transfermarkt 由来の市場価値・身長は
     データが無いこともある前提で defensive に扱う)。
     """
-    lines = [f"### {rank}. {row['player']} ({row['team']})"]
-    lines.append(f"- ポジション: {row['position']}")
+    lines = [f"- ポジション: {row['position']}"]
     if pd.notna(row.get("age")):
         lines.append(f"- 年齢: {int(row['age'])}歳")
     if pd.notna(row.get("minutes")):
@@ -118,6 +116,16 @@ def _build_card(rank: int, row: pd.Series) -> str:
 
     lines.append(f"- ポテンシャル: {potential_stars(row['potential_score'])}")
 
+    # 次元スコア (smarterscout 流の 0-100)。dim_* 列があるときだけ表示する
+    dims = [
+        (str(c).removeprefix("dim_"), row[c])
+        for c in row.index
+        if str(c).startswith("dim_") and pd.notna(row[c])
+    ]
+    if dims:
+        dims_text = " / ".join(f"{name} {value:.0f}" for name, value in dims)
+        lines.append(f"- 次元スコア (同ポジション内): {dims_text}")
+
     top_metrics = _top_pct_metrics(row)
     if top_metrics:
         metrics_text = "・".join(f"{name} {value:.0f}pct" for name, value in top_metrics)
@@ -125,6 +133,14 @@ def _build_card(rank: int, row: pd.Series) -> str:
         lines.append(f"- 💬 {row['position']} ながら {metrics_text} と数値が突出。")
 
     return "\n".join(lines)
+
+
+def _build_card(rank: int, row: pd.Series) -> str:
+    """選手 1 名分の個票 (N5 風プロフィールカード) を Markdown で組み立てる。
+
+    見出し (選手名) を本文 (ポジション以下) の上に積んだ 1 ブロックを返す。
+    """
+    return f"{card_heading(rank, row)}\n{card_body(row)}"
 
 
 def build_potential_article(
