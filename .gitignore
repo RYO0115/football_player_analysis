@@ -16,3 +16,7 @@ output/
 
 # OS
 .DS_Store
+
+# setting.json
+.claude/settings.json
+.claude/settings.local.json

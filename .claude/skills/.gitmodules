@@ -1,0 +1,18 @@
+[submodule "buisiness-planning"]
+	path = buisiness-planning
+	url = https://github.com/RYO0115/business-planning-skill.git
+[submodule "market-research"]
+	path = market-research
+	url = https://github.com/RYO0115/market-research-skill.git
+[submodule "subagent-delegation"]
+	path = subagent-delegation
+	url = https://github.com/RYO0115/subagent-delegation.git
+[submodule "cpp-dev-workflow"]
+	path = cpp-dev-workflow
+	url = https://github.com/RYO0115/cpp-dev-workflow.git
+[submodule "git-dev-workflow"]
+	path = git-dev-workflow
+	url = https://github.com/RYO0115/git-dev-workflow.git
+[submodule "python-dev-workflow"]
+	path = python-dev-workflow
+	url = https://github.com/RYO0115/python-dev-workflow.git

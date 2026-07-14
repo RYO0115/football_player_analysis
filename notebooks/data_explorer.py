@@ -22,8 +22,15 @@ def _(mo):
     mo.md("""
     # ⚽ Football Player Analysis — データエクスプローラ
 
-    3 ソース結合済みデータ (FBref: 基本/守備 + Understat: xG 系 + Transfermarkt: 市場価値/身長)
-    を対象に、**潜在能力ランキング → 散布図 → 選手個票 (レーダー + N5 風カード)** の順で確認できます。
+    3 ソース結合済みデータ (FBref: 基本/守備 + Understat: xG 系 + Transfermarkt: 市場価値/身長) を、
+    著名アナリストの手法 (`docs/analyst_methods.md` 参照) に基づく評価で確認できます:
+
+    - **PAdj**: 守備カウントはポゼッション調整済み (`TklW (PAdj)` 等)
+    - **次元スコア 0-100**: 攻撃/創造/前進/守備を**同ポジション内**で相対化 (smarterscout 流)
+    - **ポジション別レーダーテンプレート**: DF は守備・前進を厚く表示 (StatsBomb 流)
+    - **母集団**: 全リーグ統合 (`--pool all` で解析済み)
+
+    構成: **潜在能力ランキング → 次元スコア別リーダー → 散布図 → 選手個票**
     """)
     return
 
@@ -84,6 +91,8 @@ def _(league_dd, mo, profile_dd, ranked, top_slider):
         "applied_profile",
         "potential_score",
     ]
+    # 次元スコア (0-100、同ポジション内) を並べて選手タイプを読めるようにする
+    _cols += [c for c in view.columns if str(c).startswith("dim_")]
     if "transfermarkt__attr_market_value_eur" in view.columns:
         _cols.append("transfermarkt__attr_market_value_eur")
 
@@ -93,6 +102,44 @@ def _(league_dd, mo, profile_dd, ranked, top_slider):
         label="潜在能力スコア ランキング (若手のみ)",
     )
     ranking_table
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
+    ## 次元スコア別リーダー (U24)
+
+    smarterscout 流の次元スコアで「タイプ別のトップ若手」を発掘する。
+    次元を選ぶと、その次元が同ポジション内で最も高い U24 選手が並ぶ。
+    """)
+    return
+
+
+@app.cell
+def _(mo, ranked):
+    _dim_cols = [c for c in ranked.columns if str(c).startswith("dim_")]
+    dim_dd = mo.ui.dropdown(
+        options=_dim_cols,
+        value=_dim_cols[0] if _dim_cols else None,
+        label="次元",
+    )
+    dim_dd
+    return (dim_dd,)
+
+
+@app.cell
+def _(dim_dd, mo, ranked):
+    _dim = dim_dd.value
+    _cols = ["player", "team", "league", "position", "age", "minutes", _dim]
+    _others = [c for c in ranked.columns if str(c).startswith("dim_") and c != _dim]
+    leaders = ranked.sort_values(_dim, ascending=False).head(10)
+    dim_table = mo.ui.table(
+        leaders[_cols + _others].round(1),
+        selection=None,
+        label=f"{str(_dim).removeprefix('dim_')} 次元のトップ 10 (U24)",
+    )
+    dim_table
     return
 
 
